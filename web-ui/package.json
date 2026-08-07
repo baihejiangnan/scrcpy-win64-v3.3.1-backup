@@ -1,0 +1,10 @@
+{
+  "name": "scrcpy-web-console",
+  "version": "3.0.0",
+  "private": true,
+  "description": "Scrcpy 投屏控制中心 · Web UI（Python 后端 + Kimi 设计体系前端）",
+  "scripts": {
+    "dev": "python server.py",
+    "start": "python server.py"
+  }
+}

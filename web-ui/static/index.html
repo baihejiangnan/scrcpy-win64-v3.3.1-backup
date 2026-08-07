@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Scrcpy 投屏控制中心</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<!-- ======= 背景层（壁纸交叉渐变） ======= -->
+<div class="bg-stage" aria-hidden="true">
+  <div class="bg-layer" id="bgA"></div>
+  <div class="bg-layer" id="bgB"></div>
+  <div class="bg-tint"></div>
+</div>
+
+<!-- ======= 顶部栏 ======= -->
+<header class="app-header">
+  <div class="header-inner">
+    <div class="brand">
+      <span class="brand-icon" data-icon="android"></span>
+      <div class="brand-text">
+        <h1>Scrcpy 控制中心</h1>
+        <span class="brand-sub">Android Screen Mirror · Web Console</span>
+      </div>
+    </div>
+    <nav class="nav-tabs" id="navTabs" aria-label="页面导航">
+      <a class="nav-tab active" href="#/" data-route="console">控制台</a>
+      <a class="nav-tab" href="#/shortcuts" data-route="shortcuts">快捷键</a>
+    </nav>
+    <div class="header-status">
+      <span class="status-chip" id="statusChip">
+        <span class="status-dot" id="statusDot"></span>
+        <span id="statusText">正在检测设备…</span>
+      </span>
+      <button class="icon-btn" id="btnTheme" aria-label="切换主题" title="切换明暗主题">
+        <span class="icon" id="themeIcon"></span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<div class="layout" id="pageConsole">
+
+  <!-- ======= 侧栏：设备 ======= -->
+  <aside class="sidebar">
+    <section class="card">
+      <div class="card-head">
+        <h2><span class="icon" data-icon="mobile"></span>设备</h2>
+        <button class="btn btn-secondary btn-26" id="btnRefresh">
+          <span class="icon" data-icon="refresh"></span>刷新
+        </button>
+      </div>
+      <div class="device-list" id="deviceList">
+        <div class="empty-state">正在扫描设备…</div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-head">
+        <h2><span class="icon" data-icon="wifi"></span>无线连接</h2>
+      </div>
+      <div class="field">
+        <label>设备 IP</label>
+        <input type="text" id="ipInput" class="input" placeholder="192.168.1.100" spellcheck="false">
+      </div>
+      <div class="field">
+        <label>端口</label>
+        <input type="text" id="portInput" class="input" value="5555" spellcheck="false">
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-outline btn-32" id="btnTcpip">
+          <span class="icon" data-icon="power"></span>启用 TCP
+        </button>
+        <button class="btn btn-secondary btn-32" id="btnConnect">
+          <span class="icon" data-icon="link"></span>无线连接
+        </button>
+      </div>
+      <p class="hint">先用 USB 连接并「启用 TCP」，拔掉线后即可无线连接。</p>
+    </section>
+
+    <section class="card">
+      <div class="card-head">
+        <h2><span class="icon" data-icon="folder"></span>产出文件</h2>
+      </div>
+      <div class="file-list" id="fileList">
+        <div class="empty-state">截图与录制会出现在这里</div>
+      </div>
+    </section>
+  </aside>
+
+  <!-- ======= 主区 ======= -->
+  <main class="main">
+
+    <!-- 控制台 -->
+    <section class="card hero">
+      <div class="hero-left">
+        <div class="hero-state">
+          <span class="hero-device" id="heroDevice">未选择设备</span>
+          <span class="hero-sub" id="heroSub">在左侧选择一台设备后开始</span>
+        </div>
+        <div class="cmd-preview" id="cmdPreview" title="实际执行的命令">
+          <span class="cmd-dollar">$</span><span id="cmdText">scrcpy.exe --serial …</span>
+        </div>
+      </div>
+      <div class="hero-actions">
+        <span class="elapsed-chip" id="elapsedChip">
+          <span class="status-dot"></span><span id="elapsedText">00:00</span>
+        </span>
+        <button class="btn btn-primary btn-44" id="btnStart">
+          <span class="icon" data-icon="play"></span><span>开始投屏</span>
+        </button>
+        <button class="btn btn-outline-danger btn-44" id="btnStop" disabled>
+          <span class="icon" data-icon="stop"></span><span>停止</span>
+        </button>
+      </div>
+    </section>
+
+    <div class="main-grid">
+      <!-- 投屏配置 -->
+      <section class="card">
+        <div class="card-head"><h2><span class="icon" data-icon="setting"></span>投屏配置</h2></div>
+
+        <div class="mode-tiles" id="modeTiles">
+          <button class="mode-tile" data-mode="game">
+            <span class="icon" data-icon="game"></span>
+            <span class="mode-name">游戏模式</span>
+            <span class="mode-desc">270° · 60fps · 4M</span>
+          </button>
+          <button class="mode-tile" data-mode="ultra">
+            <span class="icon" data-icon="bolt"></span>
+            <span class="mode-name">高性能</span>
+            <span class="mode-desc">270° · 120fps · 8M</span>
+          </button>
+          <button class="mode-tile" data-mode="video">
+            <span class="icon" data-icon="video"></span>
+            <span class="mode-name">视频模式</span>
+            <span class="mode-desc">0° · 30fps · 2M</span>
+          </button>
+          <button class="mode-tile selected" data-mode="custom">
+            <span class="icon" data-icon="setting"></span>
+            <span class="mode-name">自定义</span>
+            <span class="mode-desc">手动配置参数</span>
+          </button>
+        </div>
+
+        <div class="param-grid">
+          <div class="field">
+            <label>旋转方向</label>
+            <select id="selRotation" class="input select">
+              <option value="0" selected>0°（默认）</option>
+              <option value="90">90°</option>
+              <option value="180">180°</option>
+              <option value="270">270°（横屏游戏）</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>最大帧率</label>
+            <select id="selFps" class="input select">
+              <option>15</option><option>30</option>
+              <option selected>60</option><option>90</option><option>120</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>视频比特率</label>
+            <select id="selBitrate" class="input select">
+              <option>1M</option><option>2M</option>
+              <option selected>4M</option><option>6M</option>
+              <option>8M</option><option>12M</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>分辨率上限</label>
+            <select id="selResolution" class="input select">
+              <option value="">原始</option>
+              <option value="720">720p</option>
+              <option value="1080" selected>1080p</option>
+              <option value="1440">2K</option>
+              <option value="2160">4K</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="toggle-grid" id="toggleGrid">
+          <label class="toggle-row"><span class="toggle" data-flag="stayAwake" data-on="true" role="switch" aria-checked="true" tabindex="0"><span class="toggle-thumb"></span></span>防止休眠</label>
+          <label class="toggle-row"><span class="toggle" data-flag="noAudio" data-on="false" role="switch" aria-checked="false" tabindex="0"><span class="toggle-thumb"></span></span>禁用音频</label>
+          <label class="toggle-row"><span class="toggle" data-flag="showTouches" data-on="false" role="switch" aria-checked="false" tabindex="0"><span class="toggle-thumb"></span></span>显示触摸</label>
+          <label class="toggle-row"><span class="toggle" data-flag="turnScreenOff" data-on="false" role="switch" aria-checked="false" tabindex="0"><span class="toggle-thumb"></span></span>关闭屏幕</label>
+          <label class="toggle-row"><span class="toggle" data-flag="alwaysOnTop" data-on="false" role="switch" aria-checked="false" tabindex="0"><span class="toggle-thumb"></span></span>窗口置顶</label>
+          <label class="toggle-row"><span class="toggle" data-flag="fullscreen" data-on="false" role="switch" aria-checked="false" tabindex="0"><span class="toggle-thumb"></span></span>全屏显示</label>
+          <label class="toggle-row"><span class="toggle" data-flag="noControl" data-on="false" role="switch" aria-checked="false" tabindex="0"><span class="toggle-thumb"></span></span>禁用控制</label>
+          <label class="toggle-row"><span class="toggle" data-flag="disableScreensaver" data-on="false" role="switch" aria-checked="false" tabindex="0"><span class="toggle-thumb"></span></span>禁用屏保</label>
+        </div>
+      </section>
+
+      <div class="main-col">
+        <!-- 录制 -->
+        <section class="card">
+          <div class="card-head">
+            <h2><span class="icon icon-rec" data-icon="record"></span>录制</h2>
+            <div class="segmented" id="fmtSeg" role="radiogroup" aria-label="录制格式">
+              <button class="seg selected" data-fmt="mp4" role="radio" aria-checked="true">MP4</button>
+              <button class="seg" data-fmt="mkv" role="radio" aria-checked="false">MKV</button>
+            </div>
+          </div>
+          <div class="record-row">
+            <button class="btn btn-secondary btn-32" id="btnRecord">
+              <span class="icon icon-rec" data-icon="record"></span><span>开始录制</span>
+            </button>
+            <label class="toggle-row small">
+              <span class="toggle" id="noDisplayToggle" data-on="false" role="switch" aria-checked="false" tabindex="0"><span class="toggle-thumb"></span></span>
+              后台录制（无窗口）
+            </label>
+          </div>
+          <p class="hint" id="recordHint">文件保存到本机 downloads 目录。</p>
+        </section>
+
+        <!-- 快捷操作 -->
+        <section class="card">
+          <div class="card-head"><h2><span class="icon" data-icon="bolt"></span>快捷操作</h2></div>
+          <div class="dropzone" id="apkDrop" tabindex="0">
+            <span class="icon" data-icon="upload"></span>
+            <span class="dz-title">拖入 APK 安装，或点击选择</span>
+            <span class="dz-sub">也可以拖入任意文件推送到 /sdcard/Download/</span>
+            <input type="file" id="apkFile" hidden>
+          </div>
+          <div class="btn-row">
+            <button class="btn btn-secondary btn-32" id="btnShot">
+              <span class="icon" data-icon="camera"></span>截图
+            </button>
+            <button class="btn btn-secondary btn-32" id="btnPush">
+              <span class="icon" data-icon="upload"></span>推送文件
+            </button>
+          </div>
+          <div class="pull-row">
+            <input type="text" id="pullPath" class="input" value="/sdcard/Download/" spellcheck="false" aria-label="设备文件路径">
+            <button class="btn btn-outline btn-32" id="btnPull">
+              <span class="icon" data-icon="download"></span>拉取
+            </button>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <!-- 日志 -->
+    <section class="card log-card">
+      <div class="card-head">
+        <h2><span class="icon" data-icon="terminal"></span>运行日志</h2>
+        <div class="btn-row">
+          <button class="btn btn-secondary btn-26" id="btnSaveLog"><span class="icon" data-icon="save"></span>保存</button>
+          <button class="btn btn-secondary btn-26" id="btnClearLog"><span class="icon" data-icon="clear"></span>清空</button>
+        </div>
+      </div>
+      <div class="log-view" id="logView" aria-live="polite"></div>
+    </section>
+  </main>
+</div>
+
+<!-- ======= 快捷键提示页 ======= -->
+<div class="layout shortcuts-layout" id="pageShortcuts" hidden>
+  <main class="main shortcuts-main">
+    <section class="card shortcut-hero">
+      <h2>⌨️ 投屏窗口快捷键</h2>
+      <p>以下快捷键作用于 <strong>scrcpy 投屏窗口</strong>（键盘焦点在投屏窗口上时）。<kbd>MOD</kbd> 为修饰键，默认是左 <kbd>Alt</kbd> 或左 <kbd>Super</kbd>（即 Win 键），可用启动参数 <code>--shortcut-mod</code> 修改（可选 <code>lctrl</code> / <code>rctrl</code> / <code>lalt</code> / <code>ralt</code> / <code>lsuper</code> / <code>rsuper</code>，如 <code>scrcpy --shortcut-mod=rctrl</code>）。</p>
+    </section>
+
+    <div class="shortcut-grid">
+      <section class="card shortcut-group">
+        <h3>🖥️ 窗口控制</h3>
+        <table class="shortcut-table"><tbody>
+          <tr><td>退出投屏</td><td class="sc-keys"><kbd>MOD</kbd>+<kbd>Q</kbd></td></tr>
+          <tr><td>全屏切换</td><td class="sc-keys"><kbd>MOD</kbd>+<kbd>F</kbd> 或 <kbd>F11</kbd></td></tr>
+          <tr><td>画面左旋转</td><td class="sc-keys"><kbd>MOD</kbd>+<kbd>←</kbd></td></tr>
+          <tr><td>画面右旋转</td><td class="sc-keys"><kbd>MOD</kbd>+<kbd>→</kbd></td></tr>
+          <tr><td>水平翻转</td><td class="sc-keys"><kbd>MOD</kbd>+<kbd>Shift</kbd>+<kbd>←</kbd>/<kbd>→</kbd></td></tr>
+          <tr><td>垂直翻转</td><td class="sc-keys"><kbd>MOD</kbd>+<kbd>Shift</kbd>+<kbd>↑</kbd>/<kbd>↓</kbd></td></tr>
+          <tr><td>暂停 / 重新暂停显示</td><td class="sc-keys"><kbd>MOD</kbd>+<kbd>Z</kbd></td></tr>
+          <tr><td>恢复显示</td><td class="sc-keys"><kbd>MOD</kbd>+<kbd>Shift</kbd>+<kbd>Z</kbd></td></tr>
+          <tr><td>重置视频捕获/编码</td><td class="sc-keys"><kbd>MOD</kbd>+<kbd>Shift</kbd>+<kbd>R</kbd></td></tr>
+          <tr><td>窗口调为 1:1 像素</td><td class="sc-keys"><kbd>MOD</kbd>+<kbd>G</kbd></td></tr>
+          <tr><td>去除黑边</td><td class="sc-keys"><kbd>MOD</kbd>+<kbd>W</kbd> 或 <em>双击黑边</em></td></tr>
+          <tr><td>FPS 计数器开关</td><td class="sc-keys"><kbd>MOD</kbd>+<kbd>I</kbd></td></tr>
+        </tbody></table>
+      </section>
+
+      <section class="card shortcut-group">
+        <h3>📱 设备按键</h3>
+        <table class="shortcut-table"><tbody>
+          <tr><td>主页 HOME</td><td class="sc-keys"><kbd>MOD</kbd>+<kbd>H</kbd> 或 <em>鼠标中键</em></td></tr>
+          <tr><td>返回 BACK</td><td class="sc-keys"><kbd>MOD</kbd>+<kbd>B</kbd> / <kbd>MOD</kbd>+<kbd>Backspace</kbd> / <em>右键</em></td></tr>
+          <tr><td>应用切换</td><td class="sc-keys"><kbd>MOD</kbd>+<kbd>S</kbd> 或 <em>鼠标第 4 键</em></td></tr>
+          <tr><td>菜单 MENU（解锁屏）</td><td class="sc-keys"><kbd>MOD</kbd>+<kbd>M</kbd></td></tr>
+          <tr><td>音量 +</td><td class="sc-keys"><kbd>MOD</kbd>+<kbd>↑</kbd></td></tr>
+          <tr><td>音量 −</td><td class="sc-keys"><kbd>MOD</kbd>+<kbd>↓</kbd></td></tr>
+          <tr><td>电源键</td><td class="sc-keys"><kbd>MOD</kbd>+<kbd>P</kbd></td></tr>
+          <tr><td>开机</td><td class="sc-keys"><em>屏幕关闭时按右键</em></td></tr>
+        </tbody></table>
+      </section>
+
+      <section class="card shortcut-group">
+        <h3>🔆 屏幕与面板</h3>
+        <table class="shortcut-table"><tbody>
+          <tr><td>关闭设备屏幕（保持投屏）</td><td class="sc-keys"><kbd>MOD</kbd>+<kbd>O</kbd></td></tr>
+          <tr><td>点亮设备屏幕</td><td class="sc-keys"><kbd>MOD</kbd>+<kbd>Shift</kbd>+<kbd>O</kbd></td></tr>
+          <tr><td>旋转设备屏幕</td><td class="sc-keys"><kbd>MOD</kbd>+<kbd>R</kbd></td></tr>
+          <tr><td>展开通知面板</td><td class="sc-keys"><kbd>MOD</kbd>+<kbd>N</kbd> 或 <em>鼠标第 5 键</em></td></tr>
+          <tr><td>展开设置面板</td><td class="sc-keys"><kbd>MOD</kbd>+<kbd>N</kbd><kbd>N</kbd> 或 <em>双击第 5 键</em></td></tr>
+          <tr><td>收起面板</td><td class="sc-keys"><kbd>MOD</kbd>+<kbd>Shift</kbd>+<kbd>N</kbd></td></tr>
+        </tbody></table>
+      </section>
+
+      <section class="card shortcut-group">
+        <h3>📋 剪贴板 <span class="sc-badge">Android ≥ 7</span></h3>
+        <table class="shortcut-table"><tbody>
+          <tr><td>复制设备内容到电脑</td><td class="sc-keys"><kbd>MOD</kbd>+<kbd>C</kbd></td></tr>
+          <tr><td>剪切到剪贴板</td><td class="sc-keys"><kbd>MOD</kbd>+<kbd>X</kbd></td></tr>
+          <tr><td>同步剪贴板并粘贴</td><td class="sc-keys"><kbd>MOD</kbd>+<kbd>V</kbd></td></tr>
+          <tr><td>注入电脑剪贴板文本</td><td class="sc-keys"><kbd>MOD</kbd>+<kbd>Shift</kbd>+<kbd>V</kbd></td></tr>
+        </tbody></table>
+      </section>
+
+      <section class="card shortcut-group">
+        <h3>🖱️ 手势与其他</h3>
+        <table class="shortcut-table"><tbody>
+          <tr><td>捏合缩放 / 旋转</td><td class="sc-keys"><kbd>Ctrl</kbd>+<em>点击并拖动</em></td></tr>
+          <tr><td>垂直倾斜（双指滑动）</td><td class="sc-keys"><kbd>Shift</kbd>+<em>点击并拖动</em></td></tr>
+          <tr><td>水平倾斜（双指滑动）</td><td class="sc-keys"><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<em>点击并拖动</em></td></tr>
+          <tr><td>键盘设置（仅 HID 键盘）</td><td class="sc-keys"><kbd>MOD</kbd>+<kbd>K</kbd></td></tr>
+          <tr><td>拖入 APK 文件</td><td class="sc-keys"><em>直接安装到设备</em></td></tr>
+          <tr><td>拖入其他文件</td><td class="sc-keys"><em>推送到设备存储</em></td></tr>
+        </tbody></table>
+      </section>
+
+      <section class="card shortcut-group">
+        <h3>📷 相机模式</h3>
+        <table class="shortcut-table"><tbody>
+          <tr><td>打开手电筒</td><td class="sc-keys"><kbd>MOD</kbd>+<kbd>T</kbd></td></tr>
+          <tr><td>关闭手电筒</td><td class="sc-keys"><kbd>MOD</kbd>+<kbd>Shift</kbd>+<kbd>T</kbd></td></tr>
+          <tr><td>相机放大</td><td class="sc-keys"><kbd>MOD</kbd>+<kbd>↑</kbd></td></tr>
+          <tr><td>相机缩小</td><td class="sc-keys"><kbd>MOD</kbd>+<kbd>↓</kbd></td></tr>
+        </tbody></table>
+      </section>
+    </div>
+
+    <section class="card shortcut-note">
+      <p>💡 <strong>重复键操作</strong>：以「展开设置面板」为例——按住 <kbd>MOD</kbd> 不松，连续按两次 <kbd>N</kbd>，再松开 <kbd>MOD</kbd>。</p>
+      <p>💡 所有 <kbd>Ctrl</kbd>+按键 组合都会直接转发给设备，由设备上当前应用处理。</p>
+    </section>
+  </main>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- ======= 背景控制条 ======= -->
+<div class="bg-bar" id="bgBar">
+  <button class="icon-btn" id="btnBgPrev" title="上一张背景" aria-label="上一张背景"><span class="icon" data-icon="prev"></span></button>
+  <button class="icon-btn" id="btnBgToggle" title="暂停自动轮换" aria-label="切换自动轮换"><span class="icon" id="bgToggleIcon"></span></button>
+  <button class="icon-btn" id="btnBgNext" title="下一张背景" aria-label="下一张背景"><span class="icon" data-icon="next"></span></button>
+  <button class="icon-btn" id="btnBgOff" title="关闭背景图" aria-label="关闭背景图"><span class="icon" data-icon="close"></span></button>
+</div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

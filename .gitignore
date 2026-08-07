@@ -1,0 +1,8 @@
+# Windows metadata
+Thumbs.db
+Desktop.ini
+
+# Temporary files
+*.tmp
+*.part
+
