@@ -99,6 +99,27 @@ const S = {
 };
 
 const $ = id => document.getElementById(id);
+const WIRELESS_IP_KEY = "scrcpy-wireless-ip";
+
+function storeWirelessIp(ip) {
+  try { localStorage.setItem(WIRELESS_IP_KEY, ip); } catch (_) {}
+}
+
+async function detectWirelessIp(showResult = true) {
+  if (!S.selected || S.selected.includes(":")) {
+    if (showResult) toast("caution", "请先选择一台 USB 设备");
+    return null;
+  }
+  const r = await post("/api/wireless/detect", { device: S.selected });
+  if (!r.ok) {
+    if (showResult) toast("error", r.error || "无法识别设备 IP");
+    return null;
+  }
+  $("ipInput").value = r.ip;
+  storeWirelessIp(r.ip);
+  if (showResult) toast("success", `已识别设备 IP：${r.ip}`);
+  return r.ip;
+}
 
 /* ---------- 主题 ---------- */
 const THEME_KEY = "scrcpy-theme";
@@ -365,7 +386,7 @@ function refreshStatusChip(devices) {
 /* ---------- 状态轮询 ---------- */
 async function pollState() {
   const r = await api("/api/state");
-  if (!r.ok) return;
+  if (!r.ok) return r;
   S.mirroring = r.mirroring;
   S.recording = r.recording;
   S.mirrorElapsed = r.mirrorElapsed || 0;
@@ -390,6 +411,7 @@ async function pollState() {
   refreshStatusChip(r.devices);
   renderRecordBtn(r.recordFile);
   renderFiles(r.recordings || []);
+  return r;
 }
 setInterval(pollState, 2500);
 
@@ -460,17 +482,37 @@ $("btnRefresh").onclick = async () => {
   btn.classList.add("loading");
   btn.disabled = true;
   S.deviceKey = "";
-  await pollState();
+  const state = await pollState();
+  let reconnected = false;
+  let savedIp = "";
+  try { savedIp = localStorage.getItem(WIRELESS_IP_KEY) || ""; } catch (_) {}
+  if (state && state.ok && savedIp && !state.devices.some(d => d.wireless)) {
+    const result = await post("/api/wireless/connect", {
+      ip: savedIp,
+      port: $("portInput").value,
+    });
+    reconnected = result.ok;
+    if (reconnected) await pollState();
+  }
   btn.classList.remove("loading");
   btn.disabled = false;
-  toast("success", "设备列表已刷新");
+  toast("success", reconnected ? "无线设备已重新连接" : "设备列表已刷新");
 };
 
 // 无线连接
+$("btnDetectIp").onclick = async () => {
+  const btn = $("btnDetectIp");
+  btn.disabled = true;
+  await detectWirelessIp(true);
+  btn.disabled = false;
+};
 $("btnTcpip").onclick = async () => {
-  if (!S.selected) return toast("caution", "请先选择一台 USB 设备");
+  if (!S.selected || S.selected.includes(":")) return toast("caution", "请先选择一台 USB 设备");
+  await detectWirelessIp(false);
   const r = await post("/api/wireless/enable", { port: $("portInput").value });
-  r.ok ? toast("success", "TCP/IP 模式已启用，可拔掉 USB 线")
+  r.ok ? toast("success", $("ipInput").value
+         ? `TCP/IP 已启用，设备 IP：${$("ipInput").value}`
+         : "TCP/IP 模式已启用")
        : toast("error", r.error || r.output || "启用失败");
 };
 $("btnConnect").onclick = async () => {
@@ -479,7 +521,12 @@ $("btnConnect").onclick = async () => {
   const t = toast("loading", "正在连接 " + ip + " ...");
   const r = await post("/api/wireless/connect", { ip, port: $("portInput").value });
   dismissToast(t);
-  r.ok ? toast("success", "无线连接成功") : toast("error", r.error || r.output || "连接失败");
+  if (r.ok) {
+    storeWirelessIp(ip);
+    toast("success", "无线连接成功");
+  } else {
+    toast("error", r.error || r.output || "连接失败");
+  }
   pollState();
 };
 
@@ -676,6 +723,7 @@ $("btnSaveLog").onclick = async () => {
 };
 
 /* ---------- 启动 ---------- */
+try { $("ipInput").value = localStorage.getItem(WIRELESS_IP_KEY) || ""; } catch (_) {}
 refreshPreview();
 pollState();
 pollLogs();

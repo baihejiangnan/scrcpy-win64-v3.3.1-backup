@@ -62,7 +62,12 @@
         <h2><span class="icon" data-icon="wifi"></span>无线连接</h2>
       </div>
       <div class="field">
-        <label>设备 IP</label>
+        <div class="field-label-row">
+          <label for="ipInput">设备 IP</label>
+          <button class="btn btn-secondary btn-26" id="btnDetectIp" title="通过 USB 自动识别手机的 Wi-Fi 或热点地址">
+            <span class="icon" data-icon="refresh"></span>自动识别
+          </button>
+        </div>
         <input type="text" id="ipInput" class="input" placeholder="192.168.1.100" spellcheck="false">
       </div>
       <div class="field">
@@ -77,7 +82,7 @@
           <span class="icon" data-icon="link"></span>无线连接
         </button>
       </div>
-      <p class="hint">先用 USB 连接并「启用 TCP」，拔掉线后即可无线连接。</p>
+      <p class="hint">先选择 USB 设备并启用 TCP，设备 IP 会自动识别。</p>
     </section>
 
     <section class="card">

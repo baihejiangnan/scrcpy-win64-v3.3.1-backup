@@ -11,6 +11,7 @@ Scrcpy 投屏控制中心 · Web UI 后端
 """
 
 import argparse
+import ipaddress
 import json
 import os
 import re
@@ -184,6 +185,46 @@ def list_devices():
     return devices
 
 
+def _parse_device_network_ips(output):
+    """Parse Android `ip -f inet addr` output and prefer Wi-Fi interfaces."""
+    candidates = []
+    interface = ""
+    preferred_prefixes = ("wlan", "wifi", "ap", "swlan", "eth")
+    for line in output.splitlines():
+        match = re.match(r"^\d+:\s+([^:@]+)", line)
+        if match:
+            interface = match.group(1)
+            continue
+        match = re.search(r"\binet\s+(\d+(?:\.\d+){3})/", line)
+        if not match or not interface.lower().startswith(preferred_prefixes):
+            continue
+        try:
+            address = ipaddress.ip_address(match.group(1))
+        except ValueError:
+            continue
+        if address.is_private and not address.is_loopback and not address.is_link_local:
+            candidates.append({"ip": str(address), "interface": interface})
+    return candidates
+
+
+def detect_device_network(dev_id):
+    """Detect a phone's LAN/hotspot address through an existing ADB link."""
+    if not dev_id:
+        return []
+    ok, out = run_cmd([ADB, "-s", dev_id, "shell", "ip", "-f", "inet", "addr"],
+                      timeout=8)
+    return _parse_device_network_ips(out) if ok else []
+
+
+def valid_wireless_target(ip, port):
+    try:
+        address = ipaddress.ip_address(ip)
+        port_num = int(port)
+    except (ValueError, TypeError):
+        return False
+    return address.version == 4 and not address.is_unspecified and 1 <= port_num <= 65535
+
+
 def pick_scrcpy_port():
     """让 Windows 选择一个当前可绑定的本地 TCP 端口。
 
@@ -350,6 +391,20 @@ class Handler(BaseHTTPRequestHandler):
             return self._send_json({"ok": True})
 
         # ---- 无线连接 ----
+        if path == "/api/wireless/detect":
+            dev = body.get("device") or STATE.snapshot()["selected"]
+            if not dev:
+                return self._send_json({"ok": False, "error": "请先选择一台 USB 设备"})
+            candidates = detect_device_network(dev)
+            if not candidates:
+                return self._send_json({
+                    "ok": False,
+                    "error": "未检测到手机的 Wi-Fi 或热点 IP，请确认网络已连接",
+                })
+            chosen = candidates[0]
+            STATE.log(f"🔎 已识别设备 IP: {chosen['ip']} ({chosen['interface']})")
+            return self._send_json({"ok": True, **chosen, "candidates": candidates})
+
         if path == "/api/wireless/enable":
             dev = STATE.snapshot()["selected"]
             if not dev:
@@ -362,8 +417,8 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/wireless/connect":
             ip = body.get("ip", "").strip()
             port = str(body.get("port", "5555")).strip()
-            if not re.match(r"^(\d{1,3}\.){3}\d{1,3}$", ip):
-                return self._send_json({"ok": False, "error": "IP 地址格式不正确"})
+            if not valid_wireless_target(ip, port):
+                return self._send_json({"ok": False, "error": "IP 地址或端口不正确"})
             target = f"{ip}:{port}"
             STATE.log(f"📶 尝试无线连接 {target} ...")
             ok, out = run_cmd([ADB, "connect", target], timeout=30)
