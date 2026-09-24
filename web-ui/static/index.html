@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Scrcpy 投屏控制中心</title>
+<link rel="icon" href="data:,">
 <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
@@ -26,8 +27,9 @@
       </div>
     </div>
     <nav class="nav-tabs" id="navTabs" aria-label="页面导航">
-      <a class="nav-tab active" href="#/" data-route="console">控制台</a>
-      <a class="nav-tab" href="#/shortcuts" data-route="shortcuts">快捷键</a>
+      <a class="nav-tab active" href="#/settings" data-route="settings" aria-current="page">常用设置</a>
+      <a class="nav-tab" href="#/logs" data-route="logs">运行日志</a>
+      <a class="nav-tab" href="#/tools" data-route="tools">录制与文件</a>
     </nav>
     <div class="header-status">
       <span class="status-chip" id="statusChip">
@@ -37,11 +39,17 @@
       <button class="icon-btn" id="btnTheme" aria-label="切换主题" title="切换明暗主题">
         <span class="icon" id="themeIcon"></span>
       </button>
+      <div class="bg-bar" id="bgBar" aria-label="背景控制">
+        <button class="icon-btn" id="btnBgPrev" title="上一张背景" aria-label="上一张背景"><span class="icon" data-icon="prev"></span></button>
+        <button class="icon-btn" id="btnBgToggle" title="暂停自动轮换" aria-label="切换自动轮换"><span class="icon" id="bgToggleIcon"></span></button>
+        <button class="icon-btn" id="btnBgNext" title="下一张背景" aria-label="下一张背景"><span class="icon" data-icon="next"></span></button>
+        <button class="icon-btn" id="btnBgOff" title="关闭背景图" aria-label="关闭背景图"><span class="icon" data-icon="close"></span></button>
+      </div>
     </div>
   </div>
 </header>
 
-<div class="layout" id="pageConsole">
+<div class="layout" id="pageSettings">
 
   <!-- ======= 侧栏：设备 ======= -->
   <aside class="sidebar">
@@ -57,10 +65,8 @@
       </div>
     </section>
 
-    <section class="card">
-      <div class="card-head">
-        <h2><span class="icon" data-icon="wifi"></span>无线连接</h2>
-      </div>
+    <details class="card wireless-card">
+      <summary class="card-head"><h2><span class="icon" data-icon="wifi"></span>无线连接</h2></summary>
       <div class="field">
         <div class="field-label-row">
           <label for="ipInput">设备 IP</label>
@@ -83,7 +89,7 @@
         </button>
       </div>
       <p class="hint">先选择 USB 设备并启用 TCP，设备 IP 会自动识别。</p>
-    </section>
+    </details>
 
     <section class="card">
       <div class="card-head">
@@ -125,7 +131,7 @@
     <div class="main-grid">
       <!-- 投屏配置 -->
       <section class="card">
-        <div class="card-head"><h2><span class="icon" data-icon="setting"></span>投屏配置</h2></div>
+        <div class="card-head"><h2><span class="icon" data-icon="setting"></span>投屏设置</h2></div>
 
         <div class="mode-tiles" id="modeTiles">
           <button class="mode-tile" data-mode="game">
@@ -262,6 +268,19 @@
   </main>
 </div>
 
+<div class="layout single-page" id="pageLogs" hidden>
+  <main class="main"></main>
+</div>
+
+<div class="layout single-page" id="pageTools" hidden>
+  <main class="main tools-main">
+    <div class="tools-grid"></div>
+    <details class="card shortcut-reference">
+      <summary>投屏窗口快捷键参考</summary>
+    </details>
+  </main>
+</div>
+
 <!-- ======= 快捷键提示页 ======= -->
 <div class="layout shortcuts-layout" id="pageShortcuts" hidden>
   <main class="main shortcuts-main">
@@ -356,14 +375,6 @@
 </div>
 
 <div class="toast-container" id="toastContainer"></div>
-
-<!-- ======= 背景控制条 ======= -->
-<div class="bg-bar" id="bgBar">
-  <button class="icon-btn" id="btnBgPrev" title="上一张背景" aria-label="上一张背景"><span class="icon" data-icon="prev"></span></button>
-  <button class="icon-btn" id="btnBgToggle" title="暂停自动轮换" aria-label="切换自动轮换"><span class="icon" id="bgToggleIcon"></span></button>
-  <button class="icon-btn" id="btnBgNext" title="下一张背景" aria-label="下一张背景"><span class="icon" data-icon="next"></span></button>
-  <button class="icon-btn" id="btnBgOff" title="关闭背景图" aria-label="关闭背景图"><span class="icon" data-icon="close"></span></button>
-</div>
 
 <script src="/static/app.js"></script>
 </body>

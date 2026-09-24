@@ -84,9 +84,9 @@ def main():
     webview.create_window(
         "Scrcpy 控制中心",
         url,
-        width=1376,
-        height=900,
-        min_size=(1024, 680),
+        width=980,
+        height=620,
+        min_size=(880, 560),
         text_select=False,
     )
     webview.start()  # 阻塞直到窗口关闭

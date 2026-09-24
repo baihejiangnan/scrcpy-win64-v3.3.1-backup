@@ -6,3 +6,14 @@ Desktop.ini
 *.tmp
 *.part
 
+# Python and packaging output
+__pycache__/
+*.py[cod]
+build/
+build-*/
+dist/
+dist-*/
+*.spec
+web-ui/downloads/
+web-ui-data/
+

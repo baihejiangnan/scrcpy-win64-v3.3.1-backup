@@ -232,15 +232,45 @@ async function initBackground() {
 }
 initBackground();
 
-/* ---------- 页面路由（控制台 / 快捷键） ---------- */
+/* ---------- 三个工作页面 ---------- */
+function arrangePages() {
+  const settings = $("pageSettings");
+  const settingsMain = settings.querySelector(".main");
+  const grid = settingsMain.querySelector(".main-grid");
+  const configCard = grid.firstElementChild;
+  const toolsGrid = $("pageTools").querySelector(".tools-grid");
+  toolsGrid.append($("btnRecord").closest(".card"), $("apkDrop").closest(".card"));
+  grid.replaceWith(configCard);
+  toolsGrid.after($("fileList").closest(".card"));
+  $("pageLogs").querySelector(".main").append($("logView").closest(".card"));
+
+  // 快捷键资料收在第三页的折叠区，不占用导航位置。
+  const shortcuts = $("pageShortcuts");
+  const reference = $("pageTools").querySelector(".shortcut-reference");
+  const shortcutMain = shortcuts.querySelector(".shortcuts-main");
+  reference.append(
+    shortcutMain.querySelector(".shortcut-hero p"),
+    shortcutMain.querySelector(".shortcut-grid"),
+    shortcutMain.querySelector(".shortcut-note")
+  );
+  shortcuts.remove();
+}
+arrangePages();
+
 function applyRoute() {
-  const isShortcuts = location.hash.startsWith("#/shortcuts");
-  $("pageConsole").hidden = isShortcuts;
-  $("pageShortcuts").hidden = !isShortcuts;
+  const requested = location.hash.slice(2);
+  const route = requested === "shortcuts" ? "tools" :
+    (["settings", "logs", "tools"].includes(requested) ? requested : "settings");
+  for (const name of ["Settings", "Logs", "Tools"]) {
+    $("page" + name).hidden = name.toLowerCase() !== route;
+  }
   document.querySelectorAll(".nav-tab").forEach(t => {
-    t.classList.toggle("active", (t.dataset.route === "shortcuts") === isShortcuts);
+    const active = t.dataset.route === route;
+    t.classList.toggle("active", active);
+    if (active) t.setAttribute("aria-current", "page");
+    else t.removeAttribute("aria-current");
   });
-  if (isShortcuts) window.scrollTo({ top: 0 });
+  window.scrollTo({ top: 0 });
 }
 window.addEventListener("hashchange", applyRoute);
 applyRoute();
